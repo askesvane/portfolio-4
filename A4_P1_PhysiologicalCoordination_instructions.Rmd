@@ -233,7 +233,7 @@ data_preprocess <- function(filename, threshold = 3){
   d1$row <- seq.int(nrow(d1))
   
   d1 = d1 %>%
-  group(n = 100, method = 'greedy') %>%
+  group(n = 1000, method = 'greedy') %>%
   dplyr::summarise(
     time = mean(time,na.rm=T),
     HR1 = mean(HR1,na.rm=T),
@@ -252,7 +252,7 @@ data_preprocess <- function(filename, threshold = 3){
   detector1 <- ifelse(duplicated(d1$Resp1)==T,"duplicate","not-duplicate")
   detector2 <- ifelse(duplicated(d1$Resp2)==T,"duplicate","not-duplicate")
   
-  if(sum(detector1=="duplicate") >= 100 | sum(detector2=="duplicate") >= 100) {
+  if(sum(detector1=="duplicate") >= 8 | sum(detector2=="duplicate") >= 8) {
     d1$Resp1 <- NA
     d1$Resp2 <- NA
   } 
@@ -311,8 +311,9 @@ Bonus question: what if we include an additional layer? Is my heart rate just ad
 - we can then build on the previous models by also adding the previous change in the other
 
 
-
+# Long format
 ```{r}
+
 # Import data from downloaded csv.
 phys_data <- read.csv("resp_data.csv")
 
@@ -511,14 +512,20 @@ phys_data %>% subset(study==4) %>%
 # Save the data
 write.csv(dd,"C:/Users/askes/Dropbox/University/Cognitive Science/3. semester/Experimental Methods 3/Portfolio-4/dd_data.csv", row.names = FALSE)
 
-
-# Set the most interesting contrast e.g. by defining synchronous or conversation as the baseline
-# Model change as a function of own and other previous state 
-# Bonus points: Add to the previous model also change in the other to see whether my adaptation is influenced by the other's adaptation.
+# Import data from downloaded csv.
+dd_data <- read.csv("dd_data.csv")
 
 
 ```
 
+
+
+
+
+# Set the most interesting contrast e.g. by defining synchronous or conversation as the baseline
+
+# Model change as a function of own and other previous state 
+# Bonus points: Add to the previous model also change in the other to see whether my adaptation is influenced by the other's adaptation.
 
 
 
