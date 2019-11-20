@@ -313,12 +313,8 @@ Bonus question: what if we include an additional layer? Is my heart rate just ad
 
 
 ```{r}
-# Plot data
-phys_data %>% subset(study==3) %>%
-  ggplot() + 
-  geom_line(aes(actual_time_min,HR1),color="red") + 
-  geom_line(aes(actual_time_min,HR2),color="blue") + 
-  facet_grid(group ~ trial)
+# Import data from downloaded csv.
+phys_data <- read.csv("resp_data.csv")
 
 # Remove all data in study 3 longer than 3 min.
 phys_data$HR1 <- ifelse(phys_data$actual_time_min > 3 & phys_data$study == 3, NA, phys_data$HR1)
@@ -333,80 +329,197 @@ list <- c("Study2_G5_T1_Synchronous","Study2_G5_T2_TurnTaking","Study2_G5_T3_Con
 phys_data$HR1 <- ifelse(phys_data$file %in% list , NA, phys_data$HR1)
 phys_data$HR2 <- ifelse(phys_data$file %in% list , NA, phys_data$HR2)
 
-#Placeholder in case I fuck up
-placeholder <- phys_data
-phys_data <- placeholder
-
 # Genearate a column for each: previous HR1, HR2, Resp1, Resp2. And genearate a column for each: change in HR1, HR2, Resp1, Resp2
 phys_data <- phys_data %>% group_by(group,study,trial) %>% 
   mutate(
     
     # For each previous
-    future_HR1 = lead(HR1,1),
-    future_HR2 = lead(HR2,1),
-    future_Resp1 = lead(Resp1,1),
-    future_Resp2 = lead(Resp2,1),
+    HR1_lead = lead(HR1,1),
+    HR2_lead = lead(HR2,1),
+    Resp1_lead = lead(Resp1,1),
+    Resp2_lead = lead(Resp2,1),
     
     # For each change
-    change_HR1 = (future_HR1 - HR1),
-    change_HR2 = (future_HR2 - HR2),
-    change_Resp1 = (future_Resp1 - Resp1),
-    change_Resp2 = (future_Resp2 - Resp2))
+    change_HR1 = (HR1_lead - HR1),
+    change_HR2 = (HR2_lead - HR2),
+    change_Resp1 = (Resp1_lead - Resp1),
+    change_Resp2 = (Resp2_lead - Resp2))
 
 # Make the data long, so we can analyze both participants at the same time 
 ## N.B. This is a bit tricky and you might have to do it in several steps
 
-# Long format for HR_change_self
-d_hr_change <- 
-  gather(phys_data,
-         participant, HR_change_self, #New variables
-         change_HR1, change_HR2) %>% #Variables we already have
+####Long format 
+
+d_hr_lead <- 
+  gather(phys_data, # data        
+         participant, HR_lead, # new vars
+         HR1_lead, HR2_lead) %>% #old vars
   
-  select(#selecting relevant variables
-    actual_time_min, HR_change_self, participant, study, group, trial, condition) %>% 
+  select( # drop irrelevant vars
+    actual_time_min, HR_lead, participant, study, group, condition, trial) %>%
   
-  mutate(#Unique ID for each participant
-    participant = 
-      parse_number(as.character(study))*1000 +
-      parse_number(as.character(group))*10 + 
+  mutate( # create unique participant ID
+    participant = parse_number(as.character(group)) * 100 + 
       parse_number(participant))
 
 
-# Long format for HR_change_other
+d_resp_lead <- 
+  gather(phys_data, # data        
+         participant, Resp_lead, # new vars
+         Resp1_lead, Resp2_lead) %>% #old vars
+  
+  select( # drop irrelevant vars
+    actual_time_min, Resp_lead, participant, study, group, condition, trial) %>%
+  
+  mutate( # create unique participant ID
+    participant = parse_number(as.character(group)) * 100 + 
+      parse_number(participant))
+
+
+d_hr_change_self <- 
+  gather(phys_data, # data        
+         participant, HR_change_self, # new vars
+         change_HR1, change_HR2) %>% #old vars
+  
+  select( # drop irrelevant vars
+    actual_time_min, HR_change_self, participant, study, group, condition, trial) %>%
+  
+  mutate( # create unique participant ID
+    participant = parse_number(as.character(group)) * 100 + 
+      parse_number(participant))
+
+
+d_resp_change_self <- 
+  gather(phys_data, # data        
+         participant, Resp_change_self, # new vars
+         change_Resp1, change_Resp2) %>% #old vars
+  
+  select( # drop irrelevant vars
+    actual_time_min, Resp_change_self, participant, study, group, condition, trial) %>%
+  
+  mutate( # create unique participant ID
+    participant = parse_number(as.character(group)) * 100 + 
+      parse_number(participant))
+
+d_hr_self <- 
+  gather(phys_data, # data        
+         participant, HR_self, # new vars
+         HR1, HR2) %>% #old vars
+  
+  select( # drop irrelevant vars
+    actual_time_min, HR_self, participant, study, group, condition, trial) %>%
+  
+  mutate( # create unique participant ID
+    participant = parse_number(as.character(group)) * 100 + 
+      parse_number(participant))
+
+d_resp_self <- 
+  gather(phys_data, # data        
+         participant, Resp_self, # new vars
+         Resp1, Resp2) %>% #old vars
+  
+  select( # drop irrelevant vars
+    actual_time_min, Resp_self, participant, study, group, condition, trial) %>%
+  
+  mutate( # create unique participant ID
+    participant = parse_number(as.character(group)) * 100 + 
+      parse_number(participant))
+
+phys_data_other <- phys_data %>% 
+  rename(
+    HR1 = "HR2",
+    HR2 = "HR1",
+    Resp1 = "Resp2",
+    Resp2 = "Resp1",
+    change_HR1 = "change_HR2",
+    change_HR2 = "change_HR1",
+    change_Resp1 = "change_Resp2",
+    change_Resp2 = "change_Resp1"
+  )
+
 d_hr_change_other <- 
-  gather(phys_data,
-         participant, HR_change_other, #New variables
-         change_HR1,change_HR2) %>% #Variables we already have
+  gather(phys_data_other, # data        
+         participant, HR_change_other, # new vars
+         change_HR1, change_HR2) %>% #old vars
   
-  select(#selecting relevant variables
-    file, actual_time_min, HR_change_other, participant, study, group, trial, condition) %>% 
+  select( # drop irrelevant vars
+    actual_time_min, HR_change_other, participant, study, group, condition, trial) %>%
   
-  mutate(#Unique ID for each participant
-    file = 
-      parse_number(as.character(study))*1000 +
-      parse_number(as.character(group))*10 + 
+  mutate( # create unique participant ID
+    participant = parse_number(as.character(group)) * 100 + 
       parse_number(participant))
 
-names(d_hr_change_other)[1] <- "participant"
-names(d_hr_change_other)[4] <- "identifyer"
 
-d_hr_change_other$participant <- ifelse(d_hr_change_other$identifyer == "change_HR2", d_hr_change_other$participant -1, +1)
+d_resp_change_other <- 
+  gather(phys_data_other, # data        
+         participant, Resp_change_other, # new vars
+         change_Resp1, change_Resp2) %>% #old vars
+  
+  select( # drop irrelevant vars
+    actual_time_min, Resp_change_other, participant, study, group, condition, trial) %>%
+  
+  mutate( # create unique participant ID
+    participant = parse_number(as.character(group)) * 100 + 
+      parse_number(participant))
+
+
+d_hr_other <- 
+  gather(phys_data_other, # data        
+         participant, HR_other, # new vars
+         HR1, HR2) %>% #old vars
+  
+  select( # drop irrelevant vars
+    actual_time_min, HR_other, participant, study, group, condition, trial) %>%
+  
+  mutate( # create unique participant ID
+    participant = parse_number(as.character(group)) * 100 + 
+      parse_number(participant))
+
+
+d_resp_other <- 
+  gather(phys_data_other, # data        
+         participant, Resp_other, # new vars
+         Resp1, Resp2) %>% #old vars
+  
+  select( # drop irrelevant vars
+    actual_time_min, Resp_other, participant, study, group, condition, trial) %>%
+  
+  mutate( # create unique participant ID
+    participant = parse_number(as.character(group)) * 100 + 
+      parse_number(participant))
+
+
+dd <- cbind(d_hr_change_self,d_hr_change_other,d_resp_change_self,d_resp_change_other,d_hr_lead,d_resp_lead,d_hr_self,d_hr_other,d_resp_self,d_resp_other) 
+
+dd <- dd %>%  select(actual_time_min,participant,group,condition,trial,study,HR_self,Resp_self,HR_other,Resp_other,HR_lead,Resp_lead,HR_change_self,HR_change_other,Resp_change_self,Resp_change_other)
 
 
 
-# USE column bind !!!! to extract HR_change_other and put in the other data set
+# Plot data
+phys_data %>% subset(study==4) %>%
+  ggplot() + 
+  geom_line(aes(actual_time_min,HR1),color="red") + 
+  geom_line(aes(actual_time_min,HR2),color="blue") + 
+  facet_grid(group ~ trial)
 
-# Set the most interesting contrast e.g. by defining synchronous or conversation as the baselin
+phys_data %>% subset(study==4) %>%
+  ggplot() + 
+  geom_line(aes(actual_time_min,Resp1),color="red") + 
+  geom_line(aes(actual_time_min,Resp2),color="blue") + 
+  facet_grid(group ~ trial)
+
+# Save the data
+write.csv(dd,"C:/Users/askes/Dropbox/University/Cognitive Science/3. semester/Experimental Methods 3/Portfolio-4/dd_data.csv", row.names = FALSE)
+
+
+# Set the most interesting contrast e.g. by defining synchronous or conversation as the baseline
 # Model change as a function of own and other previous state 
-
-
 # Bonus points: Add to the previous model also change in the other to see whether my adaptation is influenced by the other's adaptation.
 
-```
-
-```{r}
 
 ```
+
+
 
 
 ## Now we need to create control baselines.
